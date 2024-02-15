@@ -6,6 +6,22 @@ sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.
 echo "🎷 Cloning the zsh-autosuggestions repo..."
 git clone https://github.com/zsh-users/zsh-autosuggestions ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 
+#!/bin/bash
+
+# Verificar si Zsh está instalado
+if ! command -v zsh &> /dev/null; then
+    echo "🔴 Zsh no está instalado. Instalando Zsh..."
+    sudo apt-get update -y
+    sudo apt-get install zsh -y
+    echo "🔴 Zsh instalado."
+else
+    echo "🔴 Zsh ya está instalado."
+fi
+
+
+
+
+
 ######## nvm ########
 ## DOCS: https://github.com/nvm-sh/nvm#install--update-script
 echo "🎯 Installing nvm..."
