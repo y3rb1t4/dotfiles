@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # start of texts to print
@@ -14,18 +13,17 @@ select_os() {
     read -r "os"
 }
 
-install_command_with_apt(){
+install_command_with_apt() {
     com="$1"
 
-    if ! command -v "$com" &> /dev/null; then
+    if ! command -v "$com" &>/dev/null; then
         echo -e "\n🔵 Start $com installation\n"
         sudo apt install "$com" -y
         echo -e "\n✅ $com - Install successfully\n"
     fi
 }
 
-
-install_font_wget(){
+install_font_wget() {
     if [ $# -ne 1 ]; then
         return
     fi
@@ -42,57 +40,31 @@ install_font_wget(){
         echo -e "\n🎨 Start font installation\n"
         wget "$url_font"
         echo "$name_font"
-        sudo mv  "$name_font" "$route_fonts"
-        
-    else 
-        echo -e "\n❌ Error: Unable to install the font\nThe link to the source does not exist or is erroneous.\n" 
+        sudo mv "$name_font" "$route_fonts"
+
+    else
+        echo -e "\n❌ Error: Unable to install the font\nThe link to the source does not exist or is erroneous.\n"
     fi
 }
-
-
-
-# create_new_profile() {
-    
-#     sudo apt install uuid-runtime
-
-#     dconfdir='/org/gnome/terminal/legacy/profiles:'
-#     local profile_ids=$(dconf list $dconfdir/ | grep ^: | sed 's/\///g' | sed 's/://g')
-#     local profile_name="$1"
-#     local profile_ids_old="$(dconf read "$dconfdir"/list | tr -d "]")"
-#     local profile_id="$(uuidgen)"
-
-#     [ -z "$profile_ids_old" ] && local profile_ids_old="["  # if there's no `list` key
-#     [ ${#profile_ids[@]} -gt 0 ] && local delimiter=,  # if the list is empty
-#     dconf write $dconfdir/list \
-#         "${profile_ids_old}${delimiter} '$profile_id']"
-#     dconf write "$dconfdir/:$profile_id"/visible-name "'$profile_name'"
-#     echo $profile_id
-# }
-
-
-
-
 
 set_popos() {
     echo -e "\n✅ Update and upgrade\n"
     sudo apt update -y
     sudo apt upgrade -y
 
-
     # zsh
     install_command_with_apt "zsh"
-        # sudo apt install zsh-doc -y #doc
-        # touch ~/.zshrc
-     chsh -s "$(which zsh)" #cambio shell por default. Hay que reiniciar el sistema
+    chsh -s "$(which zsh)" #cambio shell por default. Hay que reiniciar el sistema
 
     ######## oh-my-zsh ########
     # asegurarce que este wget, curl and git
     install_command_with_apt "wget"
     install_command_with_apt "curl"
     install_command_with_apt "git"
+    install_command_with_apt "htop"
+    install_command_with_apt "neofetch"
 
     echo -e "\n🎳 Installing oh-my-zsh...\n"
-    # sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
     echo -e "\n🎷 Cloning the zsh-autosuggestions, zsh-zyntaz-higlighting, zsh-completions repo...\n"
@@ -111,7 +83,7 @@ set_popos() {
         echo "existe plugins"
         sed -i -E "s/$pattern_plugins/plugins=(\1 $new_plugins)/" "$zshrc_file"
     else
-        echo -e "plugins=(git $new_plugins)" >> "$zshrc_file"
+        echo -e "plugins=(git $new_plugins)" >>"$zshrc_file"
     fi
 
     if grep -q 'autoload -U compinit && compinit' "$zshrc_file"; then
@@ -128,10 +100,10 @@ set_popos() {
     pattern_theme='^ZSH_THEME=\"[^\"]*\"'
     new_conf_theme="ZSH_THEME=\"$theme\""
 
-    if grep -qE  "$pattern_theme" "$zshrc_file"; then
+    if grep -qE "$pattern_theme" "$zshrc_file"; then
         sed -i -E "s/$pattern_theme/$new_conf_theme/" "$zshrc_file"
     else
-        echo "$new_conf_theme" >> "$zshrc_file"
+        echo "$new_conf_theme" >>"$zshrc_file"
     fi
 
     # Meslo Nerd Font
@@ -139,45 +111,55 @@ set_popos() {
     install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf'
     install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf'
     install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf'
-    
-    #fc-cache -fv
-    # fc-list | grep 'MesloLGS NF'
 
+    ###### Nuevas pruebas con gsettings ######
+    default_profile=$(gsettings get org.gnome.Terminal.ProfilesList default)
+    default_profile=${default_profile:1:-1}
 
-    ### NO tiene dconf /org/gnome/terminal/legacy/profiles:/ cuando no interactuaste con las preferencias de consola.
-    ### Por ende trate de crear un perfil para editar su fuente despues pero rompe.
-    ### El gsettings cambia las fuentes del desktop pero no de la terminal.
-    # no estoy pudiendo cambiar la fuente de la terminal gnome-terminal (REVISAR)
-    # change font gnome-shell
-
-    #gsettings set org.gnome.desktop.interface font-name 'MesloLGS NF'
-    # gsettings get org.gnome.Terminal.Legacy.Profile:/
-    # route_gnome_terminal_profile='/org/gnome/terminal/legacy/profiles:/'
-    # echo "revisar antes"
-    # aux=""
-
-    # ## PRUEBAAS
-    # id=$(create_new_profile TEST)
-    # echo "El id es $id"
-
-#     read -r "aux"
-#     gnome_terminal_profile=$(dconf list "$route_gnome_terminal_profile" | grep -E ':[^-]*-[^-]*-[^-]*-[^-]*-[^/]*/')
-#     echo "$gnome_terminal_profile"
-#     dconf list $route_gnome_terminal_profile
-#     echo "/org/gnome/terminal/legacy/profiles:/""$gnome_terminal_profile""font" "'MesloLGS NF 12'"
-
-#     read -r "aux"
-#     dconf write "/org/gnome/terminal/legacy/profiles:/""$gnome_terminal_profile""font" "'MesloLGS NF 12'"
-
-
-    # dconf reset -f /
+    gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/ font "'MesloLGS NF 12'"
 
     # install tmux
     sudo apt install tmux -y
 
-    # install vim
+    ######## INSTALL LUNAR VIM ###########
+    #git make pip node cargo
+    install_command_with_apt "git"
+    install_command_with_apt "make"
+    install_command_with_apt "python3"
+    install_command_with_apt "python3-pip"
 
-    # install lunar-vim
+    # node
+    if ! which node &>/dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - &&
+            sudo apt-get install -y nodejs
+    fi
+
+    # install cargo
+    curl https://sh.rustup.rs -sSf | sudo sh -s -- -y
+
+    # lazygit para mejor experiencia con git
+
+    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar xf lazygit.tar.gz lazygit
+    sudo install lazygit /usr/local/bin
+
+    ###### Install Neovim v0.9.0+ ######
+    # latest_version_neovimcurl=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -o '"tag_name": ".*"' | cut -d '"' -f 4)
+    latest_version_neovim=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -o '"tag_name": ".*"' | sed 's/"tag_name": "//;s/"//')
+    download_url="https://github.com/neovim/neovim/releases/download/$latest_version_neovim/nvim-linux64.tar.gz"
+    path_nvim="/usr/local/bin"
+    sudo curl -sL "$download_url" | sudo tar xz -C "$path_nvim"
+    sudo ln -s "$path_nvim"/nvim-linux64/bin/nvim "$path_nvim"/nvim
+
+    # bash <(curl -s https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh)
+    LV_BRANCH='release-1.3/neovim-0.9' bash <(curl -s https://raw.githubusercontent.com/LunarVim/LunarVim/release-1.3/neovim-0.9/utils/installer/install.sh) <<EOF
+y
+y
+y
+EOF
+
+    lvim +Lazy +TSUpdate
 
     # install docker
 
@@ -200,19 +182,19 @@ if [ $# -gt "1" ]; then
 fi
 
 case "$os" in
-    #macOs
-    1|'-macOs')
-        echo "Instalación macOs"
-        ;;
-    #PopOs
-    2|'-pop')
-        set_popos
-        ;;
-    '-h')
-        echo -e "$text_help"
-        ;;
-    *)
-        echo default
-        echo -e "\n❌ Error: The option is incorrect. (-h help)\n"
-        ;;
+#macOs
+1 | '-macOs')
+    echo "Instalación macOs"
+    ;;
+#PopOs
+2 | '-pop')
+    set_popos
+    ;;
+'-h')
+    echo -e "$text_help"
+    ;;
+*)
+    echo default
+    echo -e "\n❌ Error: The option is incorrect. (-h help)\n"
+    ;;
 esac
