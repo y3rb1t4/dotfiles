@@ -18,8 +18,11 @@ install_command_with_apt() {
 
     if ! command -v "$com" &>/dev/null; then
         echo -e "\n🔵 Start $com installation\n"
-        sudo apt install "$com" -y
-        echo -e "\n✅ $com - Install successfully\n"
+        if sudo apt install "$com" -y; then
+            echo -e "\n✅ $com - Install successfully\n"
+        else
+            echo -e "\n❌ Error: Unable to install the source: $com\n"
+        fi
     fi
 }
 
@@ -73,7 +76,8 @@ set_popos() {
     git clone https://github.com/zsh-users/zsh-completions.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-completions"
 
     # existe plugins=( en .zshrc ??
-    new_plugins='zsh-autosuggestions zsh-syntax-highlighting zsh-completions colored-man-pages'
+    # saque zsh-completions porque exegol usa bashcominit.
+    new_plugins='zsh-autosuggestions zsh-syntax-highlighting colored-man-pages'
     zshrc_file="$HOME/.zshrc"
     pattern_plugins='^plugins=\(([^)]*)\)'
 
@@ -86,8 +90,13 @@ set_popos() {
         echo -e "plugins=(git $new_plugins)" >>"$zshrc_file"
     fi
 
-    if grep -q 'autoload -U compinit && compinit' "$zshrc_file"; then
-        sed -i -E "/$pattern_plugins/ a autoload -U compinit && compinit" "$zshrc_file" # revisar si es posible error por sobreescribir
+    # # zsh-completions
+    #     if ! grep -q 'autoload -U compinit && compinit' "$zshrc_file"; then
+    #         sed -i -E "/$pattern_plugins/ a autoload -U compinit && compinit" "$zshrc_file" # revisar si es posible error por sobreescribir
+    #     fi
+
+    if ! grep -q 'autoload -U bashcompinit && bashcompinit' "$zshrc_file"; then
+        echo "autoload -U bashcominit && bashcompinit" >>"$zshrc_file"
     fi
 
     # Instalar Nerd Fonts o Powerline()
@@ -112,30 +121,35 @@ set_popos() {
     install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf'
     install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf'
 
-    ###### Nuevas pruebas con gsettings ######
-    default_profile=$(gsettings get org.gnome.Terminal.ProfilesList default)
-    default_profile=${default_profile:1:-1}
 
-    gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/ font "'MesloLGS NF 12'"
 
     # install tmux
     sudo apt install tmux -y
 
     ######## INSTALL LUNAR VIM ###########
     #git make pip node cargo
-    install_command_with_apt "git"
-    install_command_with_apt "make"
-    install_command_with_apt "python3"
-    install_command_with_apt "python3-pip"
+    install_command_with_apt git
+    install_command_with_apt make
+    install_command_with_apt python3
+    install_command_with_apt python3-pip
+    install_command_with_apt bash-completion
 
     # node
     if ! which node &>/dev/null; then
         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - &&
             sudo apt-get install -y nodejs
+        # Resolving EACCES permissions errors
+        mkdir "$HOME/.npm-global"
+        npm config set prefix "$HOME/.npm-global"
+        echo "export PATH=$HOME/.npm-global/bin:\$PATH" >>"$HOME/.zshrc"
+        echo "export PATH=$HOME/.npm-global/bin:\$PATH" >>"$HOME/.bashrc"
     fi
 
     # install cargo
     curl https://sh.rustup.rs -sSf | sudo sh -s -- -y
+    source "$HOME/.cargo/env"
+    # Dejo de andar la instalación del manual por eso use apt.
+    if ! which cargo; then sudo apt install cargo -y; fi
 
     # lazygit para mejor experiencia con git
 
@@ -143,27 +157,79 @@ set_popos() {
     curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
     tar xf lazygit.tar.gz lazygit
     sudo install lazygit /usr/local/bin
+    rm lazygit.tar.gz
 
     ###### Install Neovim v0.9.0+ ######
-    # latest_version_neovimcurl=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -o '"tag_name": ".*"' | cut -d '"' -f 4)
     latest_version_neovim=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -o '"tag_name": ".*"' | sed 's/"tag_name": "//;s/"//')
     download_url="https://github.com/neovim/neovim/releases/download/$latest_version_neovim/nvim-linux64.tar.gz"
     path_nvim="/usr/local/bin"
     sudo curl -sL "$download_url" | sudo tar xz -C "$path_nvim"
     sudo ln -s "$path_nvim"/nvim-linux64/bin/nvim "$path_nvim"/nvim
 
-    # bash <(curl -s https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh)
-    LV_BRANCH='release-1.3/neovim-0.9' bash <(curl -s https://raw.githubusercontent.com/LunarVim/LunarVim/release-1.3/neovim-0.9/utils/installer/install.sh) <<EOF
-y
-y
-y
+    LV_BRANCH='release-1.3/neovim-0.9' bash <(curl -s https://raw.githubusercontent.com/LunarVim/LunarVim/release-1.3/neovim-0.9/utils/installer/install.sh) <<-EOF
+    y
+    y
+    y
 EOF
 
-    lvim +Lazy +TSUpdate
+    export "PATH=$HOME/.local/bin:$PATH"
+    echo "export \"PATH=$HOME/.local/bin:\$PATH\"" >>"$HOME/.zshrc"
+    echo "export \"PATH=$HOME/.local/bin:\$PATH\"" >>"$HOME/.bashrc"
+    lvim +TSUpdate
 
     # install docker
 
+    # Add Docker's official GPG key:
+    sudo apt-get update
+    sudo apt-get install ca-certificates curl
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    # Add the repository to Apt sources:
+    echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
+        sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo apt-get update
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+
+    sudo groupadd docker
+
+    # add the sudo group to the user
+    sudo usermod -aG docker "$(id -u -n)"
+
+    # "reload" the user groups with the newly added docker group
+    newgrp docker
+
     # install exegol
+    git clone "https://github.com/ThePorgs/Exegol"
+
+    sudo apt install python3-argcomplete
+    sudo python3 -m pip install --requirement "Exegol/requirements.txt"
+    sudo ln -s "$(pwd)/Exegol/exegol.py" "/usr/local/bin/exegol"
+    register-python-argcomplete --no-defaults exegol | sudo tee /etc/bash_completion.d/exegol >/dev/null
+    echo 'eval "$(register-python-argcomplete --no-defaults exegol)"' >>"$HOME/.zshrc"
+
+    zsh
+    exegol install
+
+    # alacritty 0.12.2
+    sudo apt install alacritty
+
+    ###### Config Gnome-Terminal #######
+
+    default_profile=$(gsettings get org.gnome.Terminal.ProfilesList default)
+    default_profile=${default_profile:1:-1}
+
+    gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" "font" "'MesloLGS NF 12'"
+    gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" "background-transparency-percent" "3"
+    gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" "use-theme-transparency" "false"
+    gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$default_profile/" "use-transparent-background" "true"
+
+
+    ####### Config Theme #######
+
 }
 
 # main
