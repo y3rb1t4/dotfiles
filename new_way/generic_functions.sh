@@ -52,11 +52,15 @@ install_repository_fonts() {
     local font_path_origin=$1
     local font_path_destination=$2
 
-    if [ ! -d "$route_fonts" ]; then
-        sudo mkdir -p "$font_path_origin"
+    if [ ! -d "$font_path_destination" ]; then
+        sudo mkdir -p "$font_path_destination"
     fi
 
-    echo -e "\n🎨 Start font installation\n"
-    sudo mv "$font_path_origin/*" "$font_path_destination"
+    if [ ! -f ./flags/fonts_ubuntu_installed.flag ]; then
+        echo -e "\n🎨 Start font installation\n"
+        sudo sh -c "cp $font_path_origin/* $font_path_destination"
+        fc-cache -fv
+        touch ./flags/fonts_ubuntu_installed.flag
+    fi
 
 }

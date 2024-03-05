@@ -1,20 +1,16 @@
 #!/bin/bash -x
 set -o errexit
 set -o pipefail
-set -o nounset
+# set -o nounset
 set -o xtrace
-
-# main
-
-# start global variables
-
-os="$1"
 
 # sources
 source configuration.sh
-source generic_funtions.sh
+source generic_functions.sh
 source art.sh
+source set_ubuntu_or_popos.sh
 
+os="$1"
 
 ###### MENU ######
 
@@ -34,6 +30,12 @@ if [ $# -gt "1" ]; then
     text_menu_os
 fi
 
+main (){
+# main
+
+
+
+
 case "$os" in
 # Ubuntu
 1 | '-ubuntu')
@@ -52,3 +54,6 @@ case "$os" in
     echo -e "\n❌ Error: The option is incorrect. (-h help)\n"
     ;;
 esac
+}
+
+main os

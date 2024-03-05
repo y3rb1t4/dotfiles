@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set_ubutu_or_popos() {
+set_ubuntu_or_popos() {
     local operating_system=$1
 
     if [ ! -d $HOME ]; then
@@ -13,8 +13,29 @@ set_ubutu_or_popos() {
     sudo apt update -y
     sudo apt upgrade -y
 
+    # Instalar programas que se necesitan para la configuración inicial
+    # ademas de programas de rapida instalación 
+    # asegurarce que este wget, curl and git
+    install_command_with_apt wget
+    install_command_with_apt curl
+    install_command_with_apt git
+    install_command_with_apt dconf
+    install_command_with_apt gsettings
+    install_command_with_apt htop
+    install_command_with_apt neofetch
+    install_command_with_apt bat
+
+    alias cat=$(which batcat)
+    echo -e "\nalias cat=$(which batcat)\n" >>.bashrc
+
     ##### VISUAL CONFIGURATION ######
     install_repository_fonts "$origin_fonts" "$default_font_installation_path"
+
+    if [ "$operating_system" == "ubuntu" ]; then
+        echo -e "\n ⚠⚠⚠ Como se encuentra en Ubuntu se debe reiniciar el equipo para cargar las fuentes. Vuelva a ejecutar el script\n"
+        read -r 
+        sudo reboot 
+    fi
 
     ## Meslo Nerd Font (oh my zsh) ##
     # install_font_wget 'https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf' $route_custom_fonts
@@ -76,30 +97,64 @@ set_ubutu_or_popos() {
         echo "$new_conf_theme" >>"$zshrc_file"
     fi
 
-    ## Config Gnome-Terminal ##
+    ## Config Gnome-Terminal##
     default_profile=$(gsettings get org.gnome.Terminal.ProfilesList default)
     default_profile=${default_profile:1:-1}
 
+    # cconfig terminal pop os
+    if [ $operating_system == "pop_os" ]; then
     cat <<-EOF | dconf load /org/gnome/terminal/
     [legacy/profiles:/:$default_profile]
+    audible-bell=false
     background-color='rgb(26,29,26)'
     background-transparency-percent=8
     font='MesloLGS NF 12'
     use-theme-transparency=false
     use-transparent-background=true
 EOF
+    fi
 
-    # pop-os wallpaper
-    route_wallpaper="$HOME/.local/share/backgrounds"
+    # config ubuntu
+    if [ $operating_system == "ubuntu" ]; then
+    cat <<-EOF | dconf load /org/gnome/terminal/
+    [legacy/profiles:/:$default_profile]
+    audible-bell=false
+    background-color='rgb(26,29,26)'
+    background-transparency-percent=15
+    font='MesloLGS NF 12'
+    bold-is-bright=false
+    use-system-font=false
+    use-theme-colors=false
+    use-theme-transparency=false
+    use-transparent-background=true
+EOF
+    cat <<-EOF | dconf load /org/gnome/shell/extensions/
+    [dash-to-dock]
+    dash-max-icon-size=38
+    dock-fixed=false
+    dock-position='BOTTOM'
+    extend-height=false
+    multi-monitor=true
+    show-mounts=true
+    show-trash=true
+EOF
+    gsettings set org.gnome.desktop.interface color-scheme='prefer-dark'
+    gsettings set org.gnome.desktop.interface icon-theme='Yaru-viridian-dark'
+
+    fi
+    # wallpaper
+    gnome_route_wallpapers="$HOME/.local/share/backgrounds"
     name_wallpaper="wallpaper-custom.jpg"
 
-    if [ ! -d $route_wallpaper ]; then
-        mkdir -p $route_wallpaper
+    if [ ! -d $gnome_route_wallpapers ]; then
+        mkdir -p $gnome_route_wallpapers
     fi
 
-    if [ ! -f "$route_wallpaper/$name_wallpaper" ]; then
-        wget https://images.hdqwalls.com/download/cyberpunk-samurai-4k-qg-1920x1080.jpg -O "$route_wallpaper/$name_wallpaper"
-    fi
+    # if [ ! -f "$gnome_route_wallpapers/$name_wallpaper" ]; then
+    #     wget https://images.hdqwalls.com/download/cyberpunk-samurai-4k-qg-1920x1080.jpg -O "$gnome_route_wallpapers/$name_wallpaper"
+    # fi
+
+    cp "$route_wallpapers_origin/$name_wallpaper" $gnome_route_wallpapers
 
     gsettings set org.gnome.desktop.background picture-uri "file:///home/cosmo/.local/share/backgrounds/$name_wallpaper"
     gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/cosmo/.local/share/backgrounds/$name_wallpaper"
@@ -108,24 +163,14 @@ EOF
         #Activate auto-tiling
         xdotool key Super+y
     fi
-    create_tiger
 
-    current_routing=$(pws)
+    current_routing=$(pwd)
 
-    gnome-terminal -- bash -c "source $current_routing cover_page_zsh_configuration; read -r; exec zsh" &
+    gnome-terminal -- bash -c "source $current_routing/generic_functions.sh cover_page_zsh_configuration; read -r; exec zsh" &
 
     ###### PROGRAMS ######
 
-    # asegurarce que este wget, curl and git
-    install_command_with_apt wget
-    install_command_with_apt curl
-    install_command_with_apt git
-    install_command_with_apt htop
-    install_command_with_apt neofetch
-    install_command_with_apt bat
 
-    alias cat=$(which batcat)
-    echo -e "\nalias cat=$(which batcat)\n" >>.bashrc
 
     # install tmux
     sudo apt install tmux -y

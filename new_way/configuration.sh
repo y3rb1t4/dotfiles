@@ -1,11 +1,12 @@
 #!/bin/bash
 
-
+route_wallpapers_origin="./wallpapers"
 route_ascii="./ascii"
 origin_fonts="./fonts"
 default_font_installation_path="/usr/share/fonts/custom_fonts"
 
-#### ART ####
+# wallpaper
+name_wallpaper=cyberpunk-samurai-4k-qg-1920x1080.jpg
 
 # Write ascii art path
 
